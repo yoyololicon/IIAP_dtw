@@ -7,7 +7,7 @@
 #include <algorithm>
 using namespace std;
 
-#define	MAX_DOCUMENTS_NUM		100
+#define	MAX_DOCUMENTS_NUM		10
 #define	MAX_DOCUMENTS_LENGTH	1000
 #define	MAX_QUERY_LENGTH		1000
 
@@ -161,9 +161,11 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
 	int		min_dist = 999999 ;
 
 	local_dist = new int*[ref_length];
-	for ( i = 0 ; i < ref_length ; i++)		local_dist[i] = new int[test_length];
+	for ( i = 0 ; i < ref_length ; i++)
+        local_dist[i] = new int[test_length];
 	Distance = new int*[ref_length];
-	for ( i = 0 ; i < ref_length ; i++)		Distance[i] = new int[test_length];
+	for ( i = 0 ; i < ref_length ; i++)
+        Distance[i] = new int[test_length];
 	for (i=0; i<ref_length; i++){
 		for (j=0; j<test_length; j++){
 			local_dist[i][j]=999999;
@@ -172,14 +174,25 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
 	}
 
     //here
-	local_dist[0][0] = compute_dist(test[0], test_vl[0], reference[0], ref_vl[0]);
-	Distance[0][0] = local_dist[0][0];
+    for(i = 0; i < ref_length/2; i++)
+    {
+        local_dist[i][0] = compute_dist(test[0], test_vl[0], reference[i], ref_vl[i]);
+        Distance[i][0] = local_dist[i][0];
+    }
+
+    for(j = 0; j < test_length/2; j++){
+        local_dist[0][j] = compute_dist(test[j], test_vl[j], reference[0], ref_vl[0]);
+        Distance[0][j] = local_dist[0][j];
+    }
+
+    //local_dist[0][0] = compute_dist(test[0], test_vl[0], reference[0], ref_vl[0]);
+	//Distance[0][0] = local_dist[0][0];
 	
 	for (i=1;i<ref_length;i++){
 		for (j=1;j<test_length;j++)
 		{	
-			if ((i>(j+j)) || (j>(i+i)))
-				continue;
+			//if ((i>(j+j)) || (j>(i+i)))
+				//continue;
 			if (test[j][0]==0)
 				local_dist[i][j] = 1;
 			else
@@ -187,33 +200,35 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
 		}
 	}
 
+    for(i = 2; i < ref_length/2; i++)
+        Distance[i][1] = min(Distance[i-2][0], Distance[i-1][0]) + local_dist[i][1];
+    for(j = 2; j < test_length/2; j++)
+        Distance[1][j] = min(Distance[0][j-2], Distance[0][j-1]) + local_dist[1][j];
+
 	Distance[1][1] = Distance[0][0]+local_dist[1][1];
-	Distance[1][2] = Distance[0][0]+local_dist[1][2];
-	Distance[2][1] = Distance[0][0]+local_dist[2][1];
+	//Distance[1][2] = Distance[0][0]+local_dist[1][2];
+	//Distance[2][1] = Distance[0][0]+local_dist[2][1];
 
 
 	for (i=2;i<ref_length;i++){
 		for (j=2;j<test_length;j++)
 		{	
-			if ((i>(j+j)) || (j>(i+i)))
-				continue;
-						
+			//if ((i>(j+j)) || (j>(i+i)))
+				//continue;
 			if ((Distance[i-1][j-2]<Distance[i-1][j-1]) && (Distance[i-1][j-2]<Distance[i-2][j-1]))
 				Distance[i][j] = Distance[i-1][j-2] + local_dist[i][j];
 			else if ((Distance[i-1][j-1]<Distance[i-1][j-2]) && (Distance[i-1][j-1]<Distance[i-2][j-1]))
 				Distance[i][j] = Distance[i-1][j-1] + local_dist[i][j];
 			else
 				Distance[i][j] = Distance[i-2][j-1] + local_dist[i][j];
-			
 		}
 	}
-	for (i=(test_length/2);i<ref_length;i++)
-	{
-		if (Distance[i][test_length-1] < min_dist)
-			min_dist = Distance[i][test_length-1] ;
-	}
 
-	
+	for (i=(ref_length/2);i<ref_length;i++)
+        min_dist = min(min_dist, Distance[i][test_length-1]);
+    for (j=(test_length/2);j<test_length;j++)
+        min_dist = min(min_dist, Distance[ref_length-1][j]);
+
 	for ( i = 0 ; i < ref_length ; i++)
 	{
 		delete [] local_dist[i];
