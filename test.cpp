@@ -25,16 +25,24 @@ int NumDocuments, sum, mean;
 
 int dtw(int **, int *, int, int **, int *, int);
 
-int transp_dtw(int **, int *, int, int **, int *, int);
+int dtw_2(int **, int *, int, int **, int *, int);
+
+int transp_dtw(int **, int *, int, int **, int *, int, bool);
 
 int compute_dist_simple(int *, int, int *, int);
 
 void Sort(int *, int *, int);
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        printf("Usage: document_dir query_dir\n");
+    if (argc < 3) {
+        printf("Usage: document_dir query_dir [type]\n");
         exit(1);
+    }
+
+    bool type1 = true;
+    if (argc == 4){
+        if(atoi(argv[3]) == 2)
+            type1 = false;
     }
 
     string doc_dir(argv[1]);
@@ -139,14 +147,14 @@ int main(int argc, char *argv[]) {
                     QueryNote[i][j] = QueryNote[i][j] - (mean - 60);
 
         for (j = 0; j < NumDocuments; j++)
-            DocScore[j] = transp_dtw(QueryNote, QueryNoteLength, QueryLength, DocNote[j], DocNoteLength[j], DocLength[j]);
+            DocScore[j] = transp_dtw(QueryNote, QueryNoteLength, QueryLength, DocNote[j], DocNoteLength[j], DocLength[j]
+            , type1);
 
         Sort(DocScore, DocRankList, NumDocuments);
 
         auto found = query.find(".seq");
         int number = stoi(query.substr(found-2, 2));
         for (j = 0; j < NumDocuments; j++) {
-            //cout << DocName[DocRankList[j]] << " " << DocScore[DocRankList[j]] << endl;
             string rank(DocName[DocRankList[j]]);
             found = rank.find(".seq");
             if(number == stoi(rank.substr(found-2, 2))){
@@ -163,7 +171,7 @@ int main(int argc, char *argv[]) {
 }
 
 
-int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length) {
+int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length, bool type1) {
     int i, j, ref_sum = 0, ref_mean = 0;
     int return_dist, min_dist = INT_MAX/2;
 
@@ -184,7 +192,10 @@ int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *
                 reference[i][j] = reference[i][j] - (ref_mean - 60);
             }
         }
-    return_dist = dtw(test, test_vl, test_length, reference, ref_vl, ref_length);
+    if(type1)
+        return_dist = dtw(test, test_vl, test_length, reference, ref_vl, ref_length);
+    else
+        return_dist = dtw_2(test, test_vl, test_length, reference, ref_vl, ref_length);
 
     if (return_dist < min_dist)
         min_dist = return_dist;
@@ -194,6 +205,63 @@ int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *
 }
 
 int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length) {
+    int i, j;
+    int **local_dist, **Distance;
+    int min_dist = INT_MAX/2;
+    float start_ratio = 0.2;
+
+    local_dist = new int *[ref_length];
+    for (i = 0; i < ref_length; i++)
+        local_dist[i] = new int[test_length];
+    Distance = new int *[ref_length];
+    for (i = 0; i < ref_length; i++)
+        Distance[i] = new int[test_length];
+    for (i = 0; i < ref_length; i++) {
+        for (j = 0; j < test_length; j++) {
+            local_dist[i][j] = compute_dist_simple(reference[i], ref_vl[i], test[j], test_vl[j]);
+            Distance[i][j] = INT_MAX/2;
+        }
+    }
+
+    //initialize distance
+    for (i = 0; i < ref_length * start_ratio; i++)
+        Distance[i][0] = local_dist[i][0];
+
+    for (j = 1; j < test_length * start_ratio; j++)
+        Distance[0][j] = local_dist[0][j];
+
+    for (i = 2; i < ref_length * start_ratio; i++)
+        Distance[i][1] = min(Distance[i - 2][0], Distance[i - 1][0]) + local_dist[i][1];
+
+    for (j = 2; j < test_length * start_ratio; j++)
+        Distance[1][j] = min(Distance[0][j - 2], Distance[0][j - 1]) + local_dist[1][j];
+
+    Distance[1][1] = Distance[0][0] + local_dist[1][1];
+
+    //compute distance
+    for (i = 2; i < ref_length; i++) {
+        for (j = 2; j < test_length; j++) {
+            Distance[i][j] = min(Distance[i-1][j-1], min(Distance[i][j-2], Distance[i-2][j])) + local_dist[i][j];
+        }
+    }
+
+    //find minimum distance
+    for (i = int(ref_length * start_ratio); i < ref_length; i++)
+        min_dist = min(min_dist, Distance[i][test_length - 1]);
+    for (j = int(test_length * start_ratio); j < test_length; j++)
+        min_dist = min(min_dist, Distance[ref_length - 1][j]);
+
+    for (i = 0; i < ref_length; i++) {
+        delete[] local_dist[i];
+        delete[] Distance[i];
+    }
+    delete local_dist;
+    delete Distance;
+
+    return min_dist;
+}
+
+int dtw_2(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length) {
     int i, j;
     int **local_dist, **Distance;
     int min_dist = INT_MAX/2;
@@ -212,39 +280,15 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
     }
 
     //initialize distance
-    for (i = 0; i < ref_length / 2; i++)
-        Distance[i][0] = local_dist[i][0];
+    Distance[0][0] = local_dist[0][0];
 
-    for (j = 0; j < test_length / 2; j++)
-        Distance[0][j] = local_dist[0][j];
-
-    for (i = 2; i < ref_length / 2; i++)
-        Distance[i][1] = min(Distance[i - 2][0], Distance[i - 1][0]) + local_dist[i][1];
-
-    for (j = 2; j < test_length / 2; j++)
-        Distance[1][j] = min(Distance[0][j - 2], Distance[0][j - 1]) + local_dist[1][j];
-
-    Distance[1][1] = Distance[0][0] + local_dist[1][1];
-
-    //compute distance
-    for (i = 2; i < ref_length; i++) {
-        for (j = 2; j < test_length; j++) {
-            if ((Distance[i - 1][j - 2] < Distance[i - 1][j - 1]) && (Distance[i - 1][j - 2] < Distance[i - 2][j - 1]))
-                Distance[i][j] = Distance[i - 1][j - 2] + local_dist[i][j];
-            else if ((Distance[i - 1][j - 1] < Distance[i - 1][j - 2]) &&
-                     (Distance[i - 1][j - 1] < Distance[i - 2][j - 1]))
-                Distance[i][j] = Distance[i - 1][j - 1] + local_dist[i][j];
-            else
-                Distance[i][j] = Distance[i - 2][j - 1] + local_dist[i][j];
+    for (i = 1; i < ref_length; i++) {
+        for (j = 1; j < test_length; j++) {
+            Distance[i][j] = min(Distance[i-1][j-1], min(Distance[i][j-1], Distance[i-1][j])) + local_dist[i][j];
         }
     }
 
-    //find minimum distance
-    for (i = (ref_length / 2); i < ref_length; i++)
-        min_dist = min(min_dist, Distance[i][test_length - 1]);
-    for (j = (test_length / 2); j < test_length; j++)
-        min_dist = min(min_dist, Distance[ref_length - 1][j]);
-
+    min_dist = Distance[ref_length-1][test_length-1];
     for (i = 0; i < ref_length; i++) {
         delete[] local_dist[i];
         delete[] Distance[i];
