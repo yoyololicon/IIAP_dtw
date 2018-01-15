@@ -22,9 +22,9 @@ int NumDocuments, sum, mean;
 
 int dtw(int **, int *, int, int **, int *, int);
 
-int dtw2(int **, int *, int, int **, int *, int);
+int dtw_2(int **, int *, int, int **, int *, int);
 
-int transp_dtw(int **, int *, int, int **, int *, int);
+int transp_dtw(int **, int *, int, int **, int *, int, bool);
 
 int compute_dist_all(int *, int, int *, int);
 
@@ -32,16 +32,21 @@ int compute_dist_simple(int *, int, int *, int);
 
 void Sort(int *, int *, int);
 
-
 int main(int argc, char *argv[]) {
     int i, j;
     fstream fs1, fs2;
 
-    if (argc != 3) {
-        printf("Usage: searching document_list query_note_sequence\n");
+    if (argc < 3) {
+        printf("Usage: searching document_list query_note_sequence [type]\n");
         exit(1);
     }
     /****************** load documents' note sequence *******************/
+
+    bool type1 = true;
+    if (argc == 4){
+        if(atoi(argv[3]) == 2)
+            type1 = false;
+    }
 
     NumDocuments = 0;
     fs1.open(argv[1], fstream::in);
@@ -124,7 +129,7 @@ int main(int argc, char *argv[]) {
 
     //inspect here
     for (j = 0; j < NumDocuments; j++)
-        DocScore[j] = transp_dtw(QueryNote, QueryNoteLength, QueryLength, DocNote[j], DocNoteLength[j], DocLength[j]);
+        DocScore[j] = transp_dtw(QueryNote, QueryNoteLength, QueryLength, DocNote[j], DocNoteLength[j], DocLength[j], type1);
 
     Sort(DocScore, DocRankList, NumDocuments);
 
@@ -135,7 +140,7 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length) {
+int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length, bool type1) {
     int i, j, ref_sum = 0, ref_mean = 0;
     int return_dist, min_dist = INT_MAX/2;
 
@@ -156,7 +161,10 @@ int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *
                 reference[i][j] = reference[i][j] - (ref_mean - 60);
             }
         }
-    return_dist = dtw(test, test_vl, test_length, reference, ref_vl, ref_length);
+    if(type1)
+        return_dist = dtw(test, test_vl, test_length, reference, ref_vl, ref_length);
+    else
+        return_dist = dtw_2(test, test_vl, test_length, reference, ref_vl, ref_length);
 
     if (return_dist < min_dist)
         min_dist = return_dist;
@@ -178,52 +186,26 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
         Distance[i] = new int[test_length];
     for (i = 0; i < ref_length; i++) {
         for (j = 0; j < test_length; j++) {
-            local_dist[i][j] = INT_MAX/2;
+            local_dist[i][j] = compute_dist_simple(reference[i], ref_vl[i], test[j], test_vl[j]);
             Distance[i][j] = INT_MAX/2;
         }
     }
 
-    //here
-    for (i = 0; i < ref_length / 2; i++) {
-        local_dist[i][0] = compute_dist_simple(test[0], test_vl[0], reference[i], ref_vl[i]);
-        Distance[i][0] = local_dist[i][0];
-    }
-
-    for (j = 0; j < test_length / 2; j++) {
-        local_dist[0][j] = compute_dist_simple(test[j], test_vl[j], reference[0], ref_vl[0]);
-        Distance[0][j] = local_dist[0][j];
-    }
-
-    for (i = 1; i < ref_length; i++) {
-        for (j = 1; j < test_length; j++) {
-            local_dist[i][j] = compute_dist_simple(reference[i], ref_vl[i], test[j], test_vl[j]);
-        }
-    }
-
-    for (i = 2; i < ref_length / 2; i++)
-        Distance[i][1] = min(Distance[i - 2][0], Distance[i - 1][0]) + local_dist[i][1];
-    for (j = 2; j < test_length / 2; j++)
-        Distance[1][j] = min(Distance[0][j - 2], Distance[0][j - 1]) + local_dist[1][j];
-
+    //initialize distance
+    Distance[0][0] = local_dist[0][0];
     Distance[1][1] = Distance[0][0] + local_dist[1][1];
+    Distance[1][2] = Distance[0][0] + local_dist[1][2];
+    Distance[2][1] = Distance[0][0] + local_dist[2][1];
 
+    //compute distance
     for (i = 2; i < ref_length; i++) {
         for (j = 2; j < test_length; j++) {
-            if ((Distance[i - 1][j - 2] < Distance[i - 1][j - 1]) && (Distance[i - 1][j - 2] < Distance[i - 2][j - 1]))
-                Distance[i][j] = Distance[i - 1][j - 2] + local_dist[i][j];
-            else if ((Distance[i - 1][j - 1] < Distance[i - 1][j - 2]) &&
-                     (Distance[i - 1][j - 1] < Distance[i - 2][j - 1]))
-                Distance[i][j] = Distance[i - 1][j - 1] + local_dist[i][j];
-            else
-                Distance[i][j] = Distance[i - 2][j - 1] + local_dist[i][j];
+            Distance[i][j] = min(Distance[i-1][j-1], min(Distance[i-1][j-2], Distance[i-2][j-1])) + local_dist[i][j];
         }
     }
 
-    for (i = (ref_length / 2); i < ref_length; i++)
-        min_dist = min(min_dist, Distance[i][test_length - 1]);
-    for (j = (test_length / 2); j < test_length; j++)
-        min_dist = min(min_dist, Distance[ref_length - 1][j]);
-
+    //find minimum distance
+    min_dist = Distance[ref_length-1][test_length-1];
     for (i = 0; i < ref_length; i++) {
         delete[] local_dist[i];
         delete[] Distance[i];
@@ -234,7 +216,7 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
     return min_dist;
 }
 
-int dtw2(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length) {
+int dtw_2(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length) {
     int i, j;
     int **local_dist, **Distance;
     int min_dist = INT_MAX/2;
@@ -252,48 +234,16 @@ int dtw2(int **test, int *test_vl, int test_length, int **reference, int *ref_vl
         }
     }
 
-    //here
-    for (i = 0; i < ref_length / 2; i++) {
-        Distance[i][0] = local_dist[i][0];
-    }
-
-    for (j = 1; j < test_length / 2; j++) {
-        Distance[0][j] = local_dist[0][j];
-    }
+    //initialize distance
+    Distance[0][0] = local_dist[0][0];
 
     for (i = 1; i < ref_length; i++) {
         for (j = 1; j < test_length; j++) {
-            if (test[j][0] == 0)
-                local_dist[i][j] = 1;
-            else
-                local_dist[i][j] = compute_dist_simple(reference[i], ref_vl[i], test[j], test_vl[j]);
+            Distance[i][j] = min(Distance[i-1][j-1], min(Distance[i][j-1], Distance[i-1][j])) + local_dist[i][j];
         }
     }
 
-    for (i = 2; i < ref_length / 2; i++)
-        Distance[i][1] = min(Distance[i - 2][0], Distance[i - 1][0]) + local_dist[i][1];
-    for (j = 2; j < test_length / 2; j++)
-        Distance[1][j] = min(Distance[0][j - 2], Distance[0][j - 1]) + local_dist[1][j];
-
-    Distance[1][1] = Distance[0][0] + local_dist[1][1];
-
-    for (i = 2; i < ref_length; i++) {
-        for (j = 2; j < test_length; j++) {
-            if ((Distance[i - 1][j - 2] < Distance[i - 1][j - 1]) && (Distance[i - 1][j - 2] < Distance[i - 2][j - 1]))
-                Distance[i][j] = Distance[i - 1][j - 2] + local_dist[i][j];
-            else if ((Distance[i - 1][j - 1] < Distance[i - 1][j - 2]) &&
-                     (Distance[i - 1][j - 1] < Distance[i - 2][j - 1]))
-                Distance[i][j] = Distance[i - 1][j - 1] + local_dist[i][j];
-            else
-                Distance[i][j] = Distance[i - 2][j - 1] + local_dist[i][j];
-        }
-    }
-
-    for (i = (ref_length / 2); i < ref_length; i++)
-        min_dist = min(min_dist, Distance[i][test_length - 1]);
-    for (j = (test_length / 2); j < test_length; j++)
-        min_dist = min(min_dist, Distance[ref_length - 1][j]);
-
+    min_dist = Distance[ref_length-1][test_length-1];
     for (i = 0; i < ref_length; i++) {
         delete[] local_dist[i];
         delete[] Distance[i];

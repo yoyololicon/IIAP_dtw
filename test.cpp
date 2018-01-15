@@ -170,7 +170,6 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-
 int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length, bool type1) {
     int i, j, ref_sum = 0, ref_mean = 0;
     int return_dist, min_dist = INT_MAX/2;
@@ -208,7 +207,6 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
     int i, j;
     int **local_dist, **Distance;
     int min_dist = INT_MAX/2;
-    float start_ratio = 0.2;
 
     local_dist = new int *[ref_length];
     for (i = 0; i < ref_length; i++)
@@ -224,33 +222,20 @@ int dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl,
     }
 
     //initialize distance
-    for (i = 0; i < ref_length * start_ratio; i++)
-        Distance[i][0] = local_dist[i][0];
-
-    for (j = 1; j < test_length * start_ratio; j++)
-        Distance[0][j] = local_dist[0][j];
-
-    for (i = 2; i < ref_length * start_ratio; i++)
-        Distance[i][1] = min(Distance[i - 2][0], Distance[i - 1][0]) + local_dist[i][1];
-
-    for (j = 2; j < test_length * start_ratio; j++)
-        Distance[1][j] = min(Distance[0][j - 2], Distance[0][j - 1]) + local_dist[1][j];
-
+    Distance[0][0] = local_dist[0][0];
     Distance[1][1] = Distance[0][0] + local_dist[1][1];
+    Distance[1][2] = Distance[0][0] + local_dist[1][2];
+    Distance[2][1] = Distance[0][0] + local_dist[2][1];
 
     //compute distance
     for (i = 2; i < ref_length; i++) {
         for (j = 2; j < test_length; j++) {
-            Distance[i][j] = min(Distance[i-1][j-1], min(Distance[i][j-2], Distance[i-2][j])) + local_dist[i][j];
+            Distance[i][j] = min(Distance[i-1][j-1], min(Distance[i-1][j-2], Distance[i-2][j-1])) + local_dist[i][j];
         }
     }
 
     //find minimum distance
-    for (i = int(ref_length * start_ratio); i < ref_length; i++)
-        min_dist = min(min_dist, Distance[i][test_length - 1]);
-    for (j = int(test_length * start_ratio); j < test_length; j++)
-        min_dist = min(min_dist, Distance[ref_length - 1][j]);
-
+    min_dist = Distance[ref_length-1][test_length-1];
     for (i = 0; i < ref_length; i++) {
         delete[] local_dist[i];
         delete[] Distance[i];
