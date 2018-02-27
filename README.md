@@ -15,8 +15,7 @@ make
 ## Pitch Sequence Files
 Before using the program, you should have prepare some sequence files.
 We have already made some in the [sequence_file](sequence_file) directory, which are the pitch sequences estimated on a extended dataset we made from [bach10 dataset](http://music.cs.northwestern.edu/data/Bach10.html) 
-using _Deep Fourier Network_.
-Detail instructions written in chinese can be view in our [report](final_report.pdf).
+using _Deep Fourier Network_(written as DDFT in the [report](final_report.pdf)).
 
 _Deep Fourier Network_ is still being developed, but you can use other multi pitch estimation algorithm as well.
 The format should look like this:
@@ -61,6 +60,9 @@ For extract09.seq rank is 1
 For extract04.seq rank is 1
 Mean Reciprocal Rank is 1
 ```
+
+For detail instructions and experiment result,  checkout our [report](final_report.pdf)(in Traditional Chinese).
+
 
 ## Environment
 
