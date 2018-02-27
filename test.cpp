@@ -148,13 +148,14 @@ int main(int argc, char *argv[]) {
 
         for (j = 0; j < NumDocuments; j++)
             DocScore[j] = transp_dtw(QueryNote, QueryNoteLength, QueryLength, DocNote[j], DocNoteLength[j], DocLength[j]
-            , type1);
+                    , type1);
 
         Sort(DocScore, DocRankList, NumDocuments);
 
         auto found = query.find(".seq");
         int number = stoi(query.substr(found-2, 2));
         for (j = 0; j < NumDocuments; j++) {
+            //cout << DocName[DocRankList[j]] << " " << DocScore[DocRankList[j]] << endl;
             string rank(DocName[DocRankList[j]]);
             found = rank.find(".seq");
             if(number == stoi(rank.substr(found-2, 2))){
@@ -169,6 +170,7 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
 
 int transp_dtw(int **test, int *test_vl, int test_length, int **reference, int *ref_vl, int ref_length, bool type1) {
     int i, j, ref_sum = 0, ref_mean = 0;
@@ -266,6 +268,10 @@ int dtw_2(int **test, int *test_vl, int test_length, int **reference, int *ref_v
 
     //initialize distance
     Distance[0][0] = local_dist[0][0];
+    for(i = 1; i < ref_length; i++)
+        Distance[i][0] = Distance[i-1][0] + local_dist[i][0];
+    for(j = 1; j < test_length; j++)
+        Distance[0][j] = Distance[0][j-1] + local_dist[0][j];
 
     for (i = 1; i < ref_length; i++) {
         for (j = 1; j < test_length; j++) {
@@ -285,15 +291,9 @@ int dtw_2(int **test, int *test_vl, int test_length, int **reference, int *ref_v
 }
 
 int compute_dist_simple(int *value1, int l1, int *value2, int l2) {
-    int maxl = max(l1, l2), sum=0;
-    for(int i = 0; i < maxl; i++){
-        if (i >= l1)
-            sum += value2[i];
-        else if( i >= l2)
-            sum += value1[i];
-        else
-            sum += abs(value1[i] - value2[i]);
-    }
+    int minl = min(l1, l2), sum=0;
+    for(int i = 0; i < minl; i++)
+        sum += abs(value1[i] - value2[i]);
     return sum;
 }
 
