@@ -13,9 +13,9 @@ make
 ```
 
 ## Pitch Sequence Files
-Before using the program, you should have prepare some sequence files.
-We have already made some in the [sequence_file](sequence_file) directory, which are the pitch sequences estimated on a extended dataset we made from [bach10 dataset](http://music.cs.northwestern.edu/data/Bach10.html) 
-using _Deep Fourier Network_(written as DDFT in the [report](final_report.pdf)).
+Before using the program, you should have prepared some sequence files.
+We have already made some in the [sequence_file](sequence_file) directory, which are the pitch sequences estimated using _Deep Fourier Network_ (written as DDFT in the [report](final_report.pdf)) on a extended dataset we made from [bach10 dataset](http://music.cs.northwestern.edu/data/Bach10.html) 
+.
 
 _Deep Fourier Network_ is still being developed, but you can use other multi pitch estimation algorithm as well.
 The format should look like this:
@@ -33,7 +33,7 @@ The format should look like this:
 ```
 Each line represet one frame, each frame can have multiple pitch value (in midi number), or none, written as '0'.
 
-Besides, sequence file name should ended with number, like 'myfile_01.seq', because our program will look at this number as ground truth to find the rank.
+Besides, file name should be ended with number, like 'myfile_01.seq', because our program will look at this number as ground truth to find the rank.
 Same number represent same song.
 
 ## How to Use
